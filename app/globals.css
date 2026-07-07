@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0B0E11;
+  --color-surface: #1E2329;
+  --color-surface-hover: #2B2F36;
+  --color-border: #2B2F36;
+  --color-primary: #F0B90B;
+  --color-success: #0ECB81;
+  --color-danger: #F6465D;
+  --color-warning: #F0B90B;
+  --color-text-primary: #EAECEF;
+  --color-text-secondary: #848E9C;
+  --color-text-muted: #474D57;
+  
+  --font-sans: var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+.card {
+  @apply bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-4;
+}
+
+.text-profit {
+  @apply text-[var(--color-success)];
+}
+
+.text-loss {
+  @apply text-[var(--color-danger)];
+}
