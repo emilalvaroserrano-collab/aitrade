@@ -19,6 +19,14 @@ export interface Position {
   profit: number;
 }
 
+export interface Candle {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 export interface MarketData {
   symbol: string;
   bid: number;
@@ -26,7 +34,20 @@ export interface MarketData {
   spread: number;
   trend: 'BULLISH' | 'BEARISH' | 'SIDEWAYS';
   volatility: string;
-  price_history: { time: string; price: number }[];
+  price_history: Candle[];
+}
+
+export interface Mt5Config {
+  host: string;
+  port: number;
+  login: string;
+  broker: string;
+  connected: boolean;
+}
+
+export interface Mt5Log {
+  time: string;
+  message: string;
 }
 
 export interface AiPrediction {
@@ -47,7 +68,13 @@ export function useTrading() {
   const [prediction, setPrediction] = useState<AiPrediction | null>(null);
   const [marketNews, setMarketNews] = useState<string>('');
   const [botStatus, setBotStatus] = useState<'RUNNING' | 'PAUSED' | 'ERROR'>('PAUSED');
-  const [mt5Connected, setMt5Connected] = useState(true);
+  
+  // MT5-specific states
+  const [mt5Config, setMt5Config] = useState<Mt5Config | null>(null);
+  const [mt5Logs, setMt5Logs] = useState<Mt5Log[]>([]);
+  const [testingConnection, setTestingConnection] = useState(false);
+
+  const mt5Connected = mt5Config?.connected ?? false;
 
   // Fetch initial state and simulate live updates
   useEffect(() => {
@@ -72,12 +99,25 @@ export function useTrading() {
       }
     };
 
+    const fetchMt5Data = async () => {
+      try {
+        const res = await fetch('/api/mt5');
+        const data = await res.json();
+        setMt5Config(data.config);
+        setMt5Logs(data.logs);
+      } catch (err) {
+        console.error('Failed to fetch MT5 data', err);
+      }
+    };
+
     fetchMarket();
     fetchAccount();
+    fetchMt5Data();
 
     const interval = setInterval(() => {
       fetchMarket();
       fetchAccount();
+      fetchMt5Data();
     }, 2000);
 
     return () => clearInterval(interval);
@@ -154,6 +194,58 @@ export function useTrading() {
     setBotStatus(prev => prev === 'RUNNING' ? 'PAUSED' : 'RUNNING');
   };
 
+  const saveMt5Config = async (host: string, port: number, login: string, broker: string) => {
+    try {
+      const res = await fetch('/api/mt5', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SAVE_CONFIG', host, port, login, broker })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMt5Config(data.config);
+      }
+    } catch (err) {
+      console.error('Failed to save MT5 config', err);
+    }
+  };
+
+  const testMt5Connection = async () => {
+    setTestingConnection(true);
+    try {
+      const res = await fetch('/api/mt5', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'TEST_CONNECTION' })
+      });
+      const data = await res.json();
+      if (data.logs) {
+        setMt5Logs(data.logs);
+      }
+      if (mt5Config) {
+        setMt5Config({ ...mt5Config, connected: data.connected });
+      }
+    } catch (err) {
+      console.error('Failed to test MT5 connection', err);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const clearMt5Logs = async () => {
+    try {
+      const res = await fetch('/api/mt5', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'CLEAR_LOGS' })
+      });
+      const data = await res.json();
+      setMt5Logs(data.logs);
+    } catch (err) {
+      console.error('Failed to clear logs', err);
+    }
+  };
+
   return {
     account,
     positions,
@@ -162,11 +254,18 @@ export function useTrading() {
     marketNews,
     botStatus,
     mt5Connected,
+    mt5Config,
+    mt5Logs,
+    testingConnection,
     fetchPrediction,
     fetchNews,
     executeTrade,
     closePosition,
     closeAll,
-    toggleBot
+    toggleBot,
+    saveMt5Config,
+    testMt5Connection,
+    clearMt5Logs
   };
 }
+
